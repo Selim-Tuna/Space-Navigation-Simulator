@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uzay Navigasyonu Simülatörü</title>
+<style>
+:root{--panel:#0e0e12;--line:#2a2a33;--ink:#eceff8;--mute:#9ea3b8;--path:#7fd6ff;--burn:#ffb347;--ok:#8be0a4}
+*{box-sizing:border-box}
+body{margin:0;background:#000;color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1040px;margin:0 auto;padding:24px 16px 56px}
+h1{font:600 clamp(26px,5vw,40px)/1.15 Georgia,"Iowan Old Style",serif;margin:0 0 6px}
+h2{font:600 22px/1.2 Georgia,serif;margin:36px 0 12px}
+.sub{color:var(--mute);margin:0 0 20px;max-width:68ch}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:14px}
+label{display:flex;flex-direction:column;font-size:14px;color:var(--mute);gap:4px;flex:1;min-width:150px}
+label b{color:var(--ink);font-weight:600}
+select,button,input[type=date]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px;color-scheme:dark}
+button{cursor:pointer}button:hover{border-color:var(--path)}
+button.main{background:var(--path);color:#021018;border-color:var(--path);font-weight:600}
+:focus-visible{outline:2px solid var(--burn);outline-offset:2px}
+#variants,#phases{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+#variants button.on,#phases button.on{border-color:var(--path);background:#16222b}
+#phases button{font-size:14px;padding:6px 10px}
+.badge{font-size:12px;color:var(--ok);margin-left:6px}
+.stage{background:#000;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+canvas{display:block;width:100%;background:#000}
+.ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:10px 0;color:var(--mute);font-size:14px}
+input[type=range]{accent-color:var(--path)}
+#clock{margin-left:auto;color:var(--ink)}
+ol#steps{list-style:none;margin:0;padding:0;border-left:2px solid var(--line)}
+#steps li{padding:8px 0 8px 16px;color:var(--mute);position:relative}
+#steps li::before{content:"";position:absolute;left:-7px;top:15px;width:12px;height:12px;border-radius:50%;background:#000;border:2px solid var(--line)}
+#steps li.done{color:var(--ink)}#steps li.done::before{background:var(--path);border-color:var(--path)}
+#steps li.act{color:var(--ink)}#steps li.act::before{background:var(--burn);border-color:var(--burn)}
+#steps b{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.card small{color:var(--mute);display:block}.card strong{font-size:20px}.card span{display:block;color:var(--mute);font-size:13px;margin-top:2px}
+.setgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.setgrid label{flex:none;min-width:0}
+.setgrid .check{flex-direction:row;align-items:center;gap:8px;color:var(--ink)}
+#set[data-m=pl] .st,#set[data-m=st] .pl{display:none}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:10px;border-bottom:1px solid var(--line)}
+th{color:var(--mute);font-weight:600}td:first-child{font-weight:600;width:20%}#fac td:last-child{color:var(--burn);width:34%}
+@media(max-width:700px){#fac,#fac tbody,#fac tr,#fac td{display:block;width:100%!important}thead{display:none}#fac tr{border-bottom:1px solid var(--line);padding:8px 0}#fac td{border:0;padding:4px 0}}
+ul.mat{columns:2 280px;padding-left:18px;margin:0}ul.mat li{margin-bottom:6px;break-inside:avoid}
+details{border-bottom:1px solid var(--line);padding:8px 0}summary{cursor:pointer;font-weight:600}details p{margin:6px 0 2px;color:var(--mute)}
+.note{color:var(--mute);font-size:14px}
+.gal{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.gal button{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;padding:10px 8px;font-size:14px}
+.gal button.on{border-color:var(--path);background:#16222b}.gal button.rec{border-color:var(--ok)}
+.gal svg{width:100%;max-width:130px;height:auto}
+#gdet{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+#gdet h3{margin:0 0 4px;font:600 20px Georgia,serif}#gdet td:first-child{width:30%;color:var(--mute);font-weight:400}
+</style>
+</head>
+<body>
+<main>
+<h1>Uzay Navigasyonu Simülatörü</h1>
+<p class="sub">Kalkış ve varış gök cismini seç. Gezegen konumları JPL’in yaklaşık Kepler elemanlarından (efemeris) hesaplanır, rota Lambert çözücüyle bulunur; kalkış günü ve uçuş süresi taranarak en tasarruflu ve en hızlı güzergah seçilir. Simülasyon park yörüngesi, kaçış, transfer ve yakalanma aşamalarını ayrı ayrı gösterir.</p>
+
+<div class="bar">
+  <label>Nereden<select id="from"></select></label>
+  <button id="swap" title="Kalkış ve varışı değiştir">Yer değiştir</button>
+  <label>Nereye<select id="to"></select></label>
+  <label style="max-width:190px">Kalkış penceresi başlangıcı<input type="date" id="dt" value="2026-10-18"></label>
+  <button id="go" class="main">Güzergahı hesapla</button>
+</div>
+<div id="variants"></div>
+<div id="phases"></div>
+<div class="stage"><canvas id="cv"></canvas></div>
+<div class="ctrl">
+  <button id="play">Duraklat</button><button id="replay">Baştan başlat</button>
+  <label style="flex-direction:row;align-items:center;flex:0;min-width:0;white-space:nowrap">Animasyon hızı <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1"></label>
+  <span id="clock"></span>
+</div>
+<p class="note" id="warn"></p>
+
+<h2>Etkenler ve ayarlar</h2>
+<div id="set" class="setgrid" data-m="pl">
+  <label class="pl">Hız tercihi (ek Δv bütçesi): <b id="vx"></b><input id="sx" type="range" min="0" max="100" value="0"></label>
+  <label class="pl">Park yörüngesi yüksekliği: <b id="vh"></b><input id="sh" type="range" min="200" max="2000" step="100" value="300"></label>
+  <label class="pl">Kalkış<select id="sl"><option value="orb">Park yörüngesinden</option><option value="surf">Gezegen yüzeyinden</option></select></label>
+  <label class="pl">Varış<select id="sa"><option value="orb">Yörüngeye otur</option><option value="land">Yüzeye in</option></select></label>
+  <label class="pl check"><input type="checkbox" id="sae"> Atmosferli varışta aerofren kullan</label>
+  <label class="st">Seyir hızı: <b id="vv"></b><input id="sv" type="range" min="50" max="100" value="100"></label>
+  <label>Zorlu uzay koşulları<select id="sc"><option value="0">Sakin</option><option value="1" selected>Normal</option><option value="2">Zor (güneş fırtınası, yoğun toz)</option></select></label>
+  <label>Rota hassasiyeti<select id="sn"><option value="0">Düşük</option><option value="1" selected>Orta</option><option value="2">Yüksek</option></select></label>
+  <label class="check"><input type="checkbox" id="sp" checked> Diğer cisimlerin çekim bozulmalarını hesaba kat</label>
+</div>
+
+<h2>Süre ve yakıt özeti</h2>
+<div class="cards" id="cards"></div>
+<p class="note">“İdeal” değer, etkenlerin hiçbiri hesaba katılmadan bulunan en düşük Δv’li Lambert çözümüdür.</p>
+
+<div id="pkw">
+<h2>Kalkış günü ve uçuş süresi haritası (porkchop)</h2>
+<div class="stage"><canvas id="pk" style="height:240px"></canvas></div>
+<p class="note">Renk toplam Δv’yi gösterir (açık mavi düşük, koyu yüksek). Beyaz halka seçili çözümdür. Harita doğrudan transfer içindir.</p>
+</div>
+
+<h2>Süreyi ve yakıtı etkileyen etkenler</h2>
+<table><thead><tr><th>Etken</th><th>Nasıl etkiler</th><th>Şu anki etkisi</th></tr></thead><tbody id="fac"></tbody></table>
+
+<h2>Güzergah adımları</h2>
+<ol id="steps"></ol>
+
+<h2>Uzay aracı tasarım örnekleri</h2>
+<p class="note">Bir araca tıkla, özelliklerini tek tek göster. Yeşil çerçeveli araçlar seçili görev için önerilenlerdir.</p>
+<div class="gal" id="gal"></div>
+<div id="gdet" hidden></div>
+
+<h2>Kullanılan malzemeler ve sistemler</h2>
+<ul class="mat" id="mats"></ul>
+<h2>Terimler sözlüğü</h2>
+<div id="gloss"></div>
+<p class="note" style="margin-top:28px">Gezegen konumları JPL yaklaşık Kepler elemanlarıyla (Standish; 1800–2050 arası geçerli, DE440 hassasiyetinde değil) hesaplanır. Dünya konumu Dünya–Ay kütle merkezidir, Ay dairesel yörünge olarak modellenir. Park yörüngesi, kaçış ve yakalanma yama konik yaklaşımıyla çözülür. Kalkan kütlesi, bekleme günleri, düzeltme manevraları ve araç özellikleri tahmini ya da kamuya açık yaklaşık değerlerdir; gerçek görev tasarımı için tam n-cisim entegrasyonu gerekir.</p>
+</main>
+<script>
+const AU=1.495978707e8,MUS=1.32712440018e11,CK=299792.458,D2R=Math.PI/180;
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],mul=(a,k)=>[a[0]*k,a[1]*k,a[2]*k],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],crs=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],nrm=a=>Math.hypot(a[0],a[1],a[2]);
+const EL={
+Merkür:[.38709927,.00000037,.20563593,.00001906,7.00497902,-.00594749,252.2503235,149472.67411175,77.45779628,.16047689,48.33076593,-.12534081],
+Venüs:[.72333566,.0000039,.00677672,-.00004107,3.39467605,-.0007889,181.9790995,58517.81538729,131.60246718,.00268329,76.67984255,-.27769418],
+Dünya:[1.00000261,.00000562,.01671123,-.00004392,-.00001531,-.01294668,100.46457166,35999.37244981,102.93768193,.32327364,0,0],
+Mars:[1.52371034,.00001847,.0933941,.00007882,1.84969142,-.00813131,-4.55343205,19140.30268499,-23.94362959,.44441088,49.55953891,-.29257343],
+Jüpiter:[5.202887,-.00011607,.04838624,-.00013253,1.30439695,-.00183714,34.39644051,3034.74612775,14.72847983,.21252668,100.47390909,.20469106],
+Satürn:[9.53667594,-.0012506,.05386179,-.00050991,2.48599187,.00193609,49.95424423,1222.49362201,92.59887831,-.41897216,113.66242448,-.28867794],
+Uranüs:[19.18916464,-.00196176,.04725744,-.00004397,.77263783,-.00242939,313.23810451,428.48202785,170.9542763,.40805281,74.01692503,.04240589],
+Neptün:[30.06992276,.00026291,.00859048,.00005105,1.77004347,.00035372,-55.12002969,218.45945325,44.96476227,-.32241464,131.78422574,-.00508664]};
+function pos(p,jd){const T=(jd-2451545)/36525,e=EL[p.n],a=e[0]+e[1]*T,ec=e[2]+e[3]*T,I=(e[4]+e[5]*T)*D2R,L=e[6]+e[7]*T,w=e[8]+e[9]*T,Od=e[10]+e[11]*T,O=Od*D2R,om=(w-Od)*D2R;
+ let M=(((L-w)%360)+540)%360-180;M*=D2R;let E=M+ec*Math.sin(M);for(let i=0;i<8;i++)E-=(E-ec*Math.sin(E)-M)/(1-ec*Math.cos(E));
+ const xp=a*(Math.cos(E)-ec),yp=a*Math.sqrt(1-ec*ec)*Math.sin(E),co=Math.cos(om),so=Math.sin(om),cO=Math.cos(O),sO=Math.sin(O),cI=Math.cos(I),sI=Math.sin(I);
+ return[((co*cO-so*sO*cI)*xp+(-so*cO-co*sO*cI)*yp)*AU,((co*sO+so*cO*cI)*xp+(-so*sO+co*cO*cI)*yp)*AU,(so*sI*xp+co*sI*yp)*AU];}
+const vel=(p,jd)=>mul(sub(pos(p,jd+.05),pos(p,jd-.05)),1/(.1*86400));
+const Cz=z=>z>1e-6?(1-Math.cos(Math.sqrt(z)))/z:z<-1e-6?(Math.cosh(Math.sqrt(-z))-1)/(-z):.5-z/24;
+const Sz=z=>z>1e-6?(Math.sqrt(z)-Math.sin(Math.sqrt(z)))/Math.pow(Math.sqrt(z),3):z<-1e-6?(Math.sinh(Math.sqrt(-z))-Math.sqrt(-z))/Math.pow(Math.sqrt(-z),3):1/6-z/120;
+function lambert(R1,R2,dt,mu){
+ const r1=nrm(R1),r2=nrm(R2),cr=crs(R1,R2);let dth=Math.acos(Math.max(-1,Math.min(1,dot(R1,R2)/(r1*r2))));if(cr[2]<0)dth=2*Math.PI-dth;
+ const A=Math.sin(dth)*Math.sqrt(r1*r2/(1-Math.cos(dth)));if(!isFinite(A)||Math.abs(A)<1e-6)return null;
+ const y=z=>r1+r2+A*(z*Sz(z)-1)/Math.sqrt(Cz(z)),F=z=>{const yy=y(z);return Math.pow(yy/Cz(z),1.5)*Sz(z)+A*Math.sqrt(yy)-Math.sqrt(mu)*dt};
+ let lo=-30,hi=4*Math.PI*Math.PI-1e-3;while(y(lo)<0&&lo<hi)lo+=.5;if(lo>=hi||F(lo)>0)return null;
+ for(let i=0;i<55;i++){const mid=(lo+hi)/2;F(mid)<0?lo=mid:hi=mid}
+ const z=(lo+hi)/2,yy=y(z),f=1-yy/r1,g=A*Math.sqrt(yy/mu),gd=1-yy/r2;
+ return{v1:mul(sub(R2,mul(R1,f)),1/g),v2:mul(sub(mul(R2,gd),R1),1/g)};
+}
+function prop(R0,V0,dt,mu){const r0=nrm(R0),vr=dot(R0,V0)/r0,al=2/r0-dot(V0,V0)/mu,sm=Math.sqrt(mu);let chi=sm*Math.abs(al)*dt;
+ for(let i=0;i<40;i++){const z=al*chi*chi,c=Cz(z),s=Sz(z),F=r0*vr/sm*chi*chi*c+(1-al*r0)*chi**3*s+r0*chi-sm*dt,dF=r0*vr/sm*chi*(1-z*s)+(1-al*r0)*chi*chi*c+r0;chi-=F/dF}
+ const z=al*chi*chi,f=1-chi*chi/r0*Cz(z),g=dt-chi**3*Sz(z)/sm;return add(mul(R0,f),mul(V0,g));}
+
+/* ================= Veri ================= */
+const P=[
+ {n:"Merkür",a:.387,R:2440,mu:22032,T:.2408,c:"#b5a79a"},
+ {n:"Venüs",a:.723,R:6052,mu:324859,T:.6152,c:"#e8c27a",atm:1},
+ {n:"Dünya",a:1,R:6371,mu:398600,T:1,c:"#5aa9ff",atm:1},
+ {n:"Mars",a:1.524,R:3390,mu:42828,T:1.881,c:"#e0714f",atm:1},
+ {n:"Jüpiter",a:5.203,R:69911,mu:1.26687e8,T:11.86,c:"#d9a77a",g:1},
+ {n:"Satürn",a:9.537,R:58232,mu:3.7931e7,T:29.46,c:"#e6d3a0",g:1},
+ {n:"Uranüs",a:19.19,R:25362,mu:5.794e6,T:84.01,c:"#8fe3e8",g:1},
+ {n:"Neptün",a:30.07,R:24622,mu:6.8365e6,T:164.8,c:"#6c86ff",g:1}];
+const EARTH=P[2],JUP=P[4],MOON={n:"Ay",moon:1,R:1737.4,mu:4902.8,a:1,T:27.32/365.25,c:"#d0d0d0"};
+const S=[["Proxima Centauri",4.2465,14.495,-62.68],["Alfa Centauri A",4.37,14.66,-60.83],["Barnard Yıldızı",5.96,17.963,4.69],["Wolf 359",7.86,10.939,7.01],["Sirius",8.6,6.752,-16.72],["Epsilon Eridani",10.5,3.549,-9.46],["Procyon",11.46,7.655,5.22],["Tau Ceti",11.9,1.734,-15.94],["Altair",16.7,19.846,8.87],["Vega",25,18.616,38.78],["Fomalhaut",25.1,22.961,-29.62],["Arcturus",36.7,14.261,19.18],["TRAPPIST-1",40.7,23.108,-5.04],["Polaris",433,2.53,89.26],["Betelgeuse",548,5.919,7.41]]
+ .map(([n,d,ra,de])=>({n,d,star:1,ang:ra*15*D2R,x:d*Math.cos(de*D2R)*Math.cos(ra*15*D2R),y:d*Math.cos(de*D2R)*Math.sin(ra*15*D2R),z:d*Math.sin(de*D2R)}));
+const ALL=[...P,MOON,...S];
+const $=id=>document.getElementById(id);
+function fill(sel,def){sel.innerHTML='<optgroup label="Gezegenler">'+P.map(p=>`<option>${p.n}</option>`).join('')+'</optgroup><optgroup label="Uydu"><option>Ay</option></optgroup><optgroup label="Yıldızlar">'+S.map(s=>`<option>${s.n}</option>`).join('')+'</optgroup>';sel.value=def}
+fill($("from"),"Dünya");fill($("to"),"Mars");
+const byN=n=>ALL.find(b=>b.n===n);
+const ft=y=>{if(y<1)return Math.round(y*365.25)+" gün";if(y<100){const yy=Math.floor(y),m=Math.round((y-yy)*12);return yy+" yıl"+(m&&m<12?" "+m+" ay":"")}return Math.round(y).toLocaleString("tr-TR")+" yıl"};
+const fd=d=>d<1?Math.round(d*24)+" saat":ft(d/365.25);
+const n1=(v,d=2)=>v.toLocaleString("tr-TR",{maximumFractionDigits:d});
+const dstr=jd=>new Date((jd-2440587.5)*864e5).toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric",timeZone:"UTC"});
+const IDEAL={x:0,h:300,lau:"orb",arr:"orb",aero:false,cond:0,nav:1,pert:false,vs:1,ideal:true};
+const gs=()=>({x:+$("sx").value/100,h:+$("sh").value,lau:$("sl").value,arr:$("sa").value,aero:$("sae").checked,cond:+$("sc").value,nav:+$("sn").value,pert:$("sp").checked,vs:+$("sv").value/100});
+const jdIn=()=>Date.parse($("dt").value+"T00:00:00Z")/864e5+2440587.5;
+const dT=(a,b)=>Math.abs(a-b)<1e-9?"ideal ile aynı":`ideal ${ft(b)} (${a>b?"+":"−"}${ft(Math.abs(a-b))})`;
+const dV=(a,b)=>Math.abs(a-b)<1e-9?"ideal ile aynı":`ideal ${n1(b)} km/s (${a>b?"+":"−"}${n1(Math.abs(a-b))})`;
+
+/* ================= Yerçekimi, yerel geometri ================= */
+const park=(b,s)=>b.g?b.R*4:b.moon?b.R+100:b.R+s.h;
+const esc=(b,v,s)=>{const r=park(b,s);return Math.sqrt(v*v+2*b.mu/r)-Math.sqrt(b.mu/r)};
+const rsoi=b=>b.moon?66100:b.a*AU*Math.pow(b.mu/MUS,.4);
+function locInfo(b,vi,s){
+  vi=Math.max(vi,.05);const rp=park(b,s),mu=b.mu,e=1+rp*vi*vi/mu,a=mu/(vi*vi),rmax=Math.max(rsoi(b),4*rp),H=Math.acosh(Math.max(1,(rmax/a+1)/e));
+  return{b,rp,e,a,nu:Math.acos(-1/e),rmax,H,vi,tp:2*Math.PI*Math.sqrt(rp**3/mu)/86400,th:Math.sqrt(a**3/mu)*(e*Math.sinh(H)-H)/86400};
+}
+function cisInfo(s){
+  const mu=EARTH.mu,r0=EARTH.R+s.h,rM=384400,a=(r0+rM)/2,e=(rM-r0)/(rM+r0),vp=Math.sqrt(mu*(2/r0-1/a)),va=Math.sqrt(mu*(2/rM-1/a));
+  const vinf=Math.sqrt(mu/rM)-va;
+  return{r0,rM,a,e,dv1:vp-Math.sqrt(mu/r0),vinf,t:Math.PI*Math.sqrt(a**3/mu)/86400,loi:esc(MOON,vinf,s),tpE:2*Math.PI*Math.sqrt(r0**3/mu)/86400};
+}
+
+/* ================= Lambert taraması ================= */
+const cache={};
+const hohT=(o,d)=>Math.PI*Math.sqrt(Math.pow((o.a+d.a)/2*AU,3)/MUS)/86400;
+function tryLam(o,d,jd,tof){
+  const r1=pos(o,jd),r2=pos(d,jd+tof),L=lambert(r1,r2,tof*86400,MUS);if(!L)return null;
+  const u1=sub(L.v1,vel(o,jd)),u2=sub(L.v2,vel(d,jd+tof));
+  return{r1,V1:L.v1,u1,u2,v1:nrm(u1),v2:nrm(u2),tof,jd};
+}
+function search(o,d,jd0,s){
+  const key=[o.n,d.n,jd0,s.h].join("|");if(cache[key])return cache[key];
+  const syn=365.25/Math.abs(1/o.T-1/d.T),win=Math.min(Math.max(syn*1.02,200),3650),th=hohT(o,d),ND=70,NT=36,t0=Math.max(25,.45*th),t1=2*th;
+  const G=[];let gmin=Infinity;
+  for(let i=0;i<ND;i++){const row=[],jd=jd0+win*i/(ND-1);
+    for(let j=0;j<NT;j++){const tof=t0+(t1-t0)*j/(NT-1),L=tryLam(o,d,jd,tof);const dv=L?esc(o,L.v1,s)+esc(d,L.v2,s):null;row.push(dv);if(dv!==null&&dv<gmin)gmin=dv}G.push(row)}
+  return cache[key]={G,ND,NT,t0,t1,win,jd0,gmin,o,d};
+}
+function pickSol(sr,s){
+  const{G,ND,NT,t0,t1,win,jd0,gmin,o,d}=sr,B=gmin*(1+1.5*s.x),bj=[];
+  for(let j=0;j<NT;j++){let bi=-1;for(let i=0;i<ND;i++)if(G[i][j]!==null&&(bi<0||G[i][j]<G[bi][j]))bi=i;bj.push(bi)}
+  let sj=-1;for(let j=0;j<NT;j++)if(bj[j]>=0&&G[bj[j]][j]<=B+1e-9){sj=j;break}
+  if(sj<0)return null;
+  const si=bj[sj],ds=win/(ND-1),ts=(t1-t0)/(NT-1);let best=null;
+  for(let a=-1;a<=1;a+=.25)for(let b=-1;b<=1;b+=.25){
+    const jd=jd0+ds*(si+a),tof=t0+ts*(sj+b);if(jd<jd0||tof<20)continue;
+    const L=tryLam(o,d,jd,tof);if(!L)continue;const dv=esc(o,L.v1,s)+esc(d,L.v2,s),cost=s.x===0?dv:(dv<=B?tof:Infinity);
+    if(!best||cost<best.cost)best={cost,L,dv}}
+  return best&&isFinite(best.cost)?best.L:null;
+}
+function flyCost(ui,uo){
+  const vi=nrm(ui),vo=nrm(uo),ang=Math.acos(Math.max(-1,Math.min(1,dot(ui,uo)/(vi*vo)))),v=(vi+vo)/2,ec=1+1.3*JUP.R*v*v/JUP.mu,eff=Math.max(0,ang-2*Math.asin(1/ec));
+  return Math.sqrt(Math.max(0,vi*vi+vo*vo-2*vi*vo*Math.cos(eff)));
+}
+function searchAssist(o,d,jd0,s){
+  const key=["A",o.n,d.n,jd0,s.h].join("|");if(cache[key]!==undefined)return cache[key];
+  const win=Math.min(Math.max(365.25/Math.abs(1/o.T-1/JUP.T)*1.02,200),3650),ND=24,N1=12,N2=12,h1=hohT(o,JUP),h2=hohT(JUP,d);let best=null;
+  for(let i=0;i<ND;i++){const jd=jd0+win*i/(ND-1);
+    for(let a=0;a<N1;a++){const tf1=h1*(.55+.95*a/(N1-1)),l1=tryLam(o,JUP,jd,tf1);if(!l1)continue;const c1=esc(o,l1.v1,s);
+      for(let b=0;b<N2;b++){const tf2=h2*(.55+.95*b/(N2-1)),l2=tryLam(JUP,d,jd+tf1,tf2);if(!l2)continue;
+        const fl=flyCost(l1.u2,l2.u1),cost=c1+fl+esc(d,l2.v2,s);if(!best||cost<best.cost)best={cost,l1,l2,fl}}}}
+  return cache[key]=best;
+}
+
+/* ================= Görev oluşturma ================= */
+function mkLeg(o,d,t){
+  const N=90,sm=[t.r1];for(let k=1;k<=N;k++)sm.push(prop(t.r1,t.V1,t.tof*86400*k/N,MUS));
+  return{o,d,jd0:t.jd,tof:t.tof,t:t.tof/365.25,u1:t.u1,u2:t.u2,v1:t.v1,v2:t.v2,samples:sm};
+}
+function metr(v,s){
+  const L=v.legs,id=!!s.ideal,m={},f=L[0],l=L[L.length-1],o0=v.o,d0=v.d,cs=v.cs;
+  m.dep=L.length?esc(f.o,f.v1,s):0;m.arr=L.length?esc(l.d,l.v2,s):0;m.asc=0;m.land=0;m.aero=false;m.pre=0;m.post=0;
+  if(o0.moon)m.pre=esc(MOON,cs.vinf,s)+cs.dv1;
+  if(d0.moon)m.post=cs.dv1+cs.loi;
+  if(!id&&s.lau==="surf"&&!o0.g){m.gl=.18*Math.sqrt(o0.mu/o0.R);m.dr=o0.n==="Dünya"?.1:o0.n==="Venüs"?.6:o0.atm?.02:0;m.vc=Math.sqrt(o0.mu/(o0.R+(o0.moon?100:s.h)));m.asc=m.vc+m.gl+m.dr}
+  if(!id&&s.aero&&L.length&&!d0.moon&&d0.atm){const lim={"Dünya":12,"Venüs":11,"Mars":7}[d0.n];if(l.v2<=lim){m.arr=.15*m.arr+.1;m.aero=true}else m.aeroNo=lim}
+  if(!id&&s.arr==="land"&&!d0.g)m.land=d0.moon?Math.sqrt(MOON.mu/MOON.R):d0.atm?{"Dünya":.3,"Venüs":.3,"Mars":.6}[d0.n]:Math.sqrt(d0.mu/d0.R);
+  const tot0=v.T*365.25+v.extra;
+  m.nd=id?0:tot0*[.03,.015,.006][s.nav];m.hold=id?0:[0,5,20][s.cond];
+  m.tcm=id?0:.02*Math.sqrt(tot0/365.25)*[1.6,1,.6][s.nav]*(s.pert?1.5:1);
+  m.dv=m.asc+m.dep+m.arr+m.pre+m.post+m.land+m.tcm+(v.fly||0);m.T=(tot0+m.nd+m.hold)/365.25;
+  m.mrC=Math.exp(m.dv/(9.80665*.45));m.mrE=Math.exp(m.dv/(9.80665*3));
+  const jup=L.some(x=>x.d.n==="Jüpiter")||o0.n==="Jüpiter"||d0.n==="Jüpiter";
+  m.shield=id?0:[.01,.03,.07][s.cond]+(jup?.03:0);m.tps=m.aero?.05:0;
+  m.payC=1/m.mrC-.1-m.shield-m.tps;m.payE=1/m.mrE-.18-m.shield-m.tps;
+  return m;
+}
+function planetVariants(o,d,s,jd0){
+  const oe=o.moon?EARTH:o,de=d.moon?EARTH:d,cs=(o.moon||d.moon)?cisInfo(s):null,V=[];
+  const base={o,d,oe,de,cs};
+  const extraOf=(L)=>{let e=0;if(L.length){const a=locInfo(L[0].o,L[0].v1,s),b=locInfo(L[L.length-1].d,L[L.length-1].v2,s);e=2*a.tp+a.th+2*b.tp+b.th}
+    if(o.moon){const l=locInfo(MOON,cs.vinf,s);e+=l.tp*2+l.th+cs.t+2*cs.tpE}
+    if(d.moon){const l=locInfo(MOON,cs.vinf,s);e+=l.tp*2+l.th+cs.t+2*cs.tpE}return e};
+  if(oe===de){const v={...base,name:"Dünya–Ay transferi (Hohmann tabanlı)",legs:[],T:0};v.extra=extraOf([]);V.push(v)}
+  else{
+    const sr=search(oe,de,jd0,s),t=pickSol(sr,s);
+    if(t){const L=[mkLeg(oe,de,t)],v={...base,name:"Lambert çözümü, doğrudan transfer"+(s.x>0?" (hızlandırılmış)":""),legs:L,T:L[0].t,sr,fly:0};v.extra=extraOf(L);V.push(v)}
+    if(oe!==JUP&&de!==JUP&&(oe.a-JUP.a)*(de.a-JUP.a)<0){
+      const as=searchAssist(oe,de,jd0,s);
+      if(as){const L=[mkLeg(oe,JUP,as.l1),mkLeg(JUP,de,as.l2)],v={...base,name:"Jüpiter gravite yardımı (Lambert)",legs:L,T:L[0].t+L[1].t,assist:1,fly:as.fl,sr};v.extra=extraOf(L);V.push(v)}
+    }
+  }
+  V.forEach(v=>v.m=metr(v,s));return V;
+}
+function starVariants(o,d){
+  const a=o.star?[o.x,o.y,o.z]:[0,0,0],b=d.star?[d.x,d.y,d.z]:[0,0,0],D=nrm(sub(a,b));
+  return[
+   {name:"Işık yelkeni, 0,2c (hızlı geçiş)",star:1,D,c:.2,flyby:1,tech:"Yer tabanlı dev lazer dizisi + gram ölçekli yelken"},
+   {name:"Füzyon itkisi, 0,1c (frenleyerek varış)",star:1,D,c:.1,flyby:0,ve:.04,tech:"Deuterium/Helyum-3 füzyon motoru"},
+   {name:"Parker Sondası hızı, 0,00064c",star:1,D,c:.00064,flyby:1,tech:"Mevcut teknoloji sınırı (Güneş’e dalış + Oberth etkisi)"},
+   {name:"Voyager hızı, 0,000057c",star:1,D,c:.0000567,flyby:1,tech:"Kimyasal itki + gezegen yerçekimi yardımları"}];
+}
+function mstar(v,s){
+  const id=!!s.ideal,m={},c=v.c*s.vs,k=v.flyby?1:1.1;
+  m.c=c;m.D=v.D*(id?1:1+[0,.01,.03][s.cond]);m.T=m.D/c*k*(id?1:1+[.02,.01,.004][s.nav]);
+  m.gam=1/Math.sqrt(1-c*c);m.Ts=m.T/m.gam;m.tcm=id?0:c*CK*[1e-4,3e-5,1e-5][s.nav]*(s.pert?1.5:1);
+  m.dv=c*CK*(v.flyby?1:2)+m.tcm;m.ke=.5*(c*CK*1000)**2;m.dust=.5e-9*(c*CK*1000)**2;
+  m.mr=v.ve?Math.exp(m.dv/(v.ve*CK)):null;m.shield=id?0:[.01,.03,.07][s.cond]*Math.max(.3,Math.min(4,(c/.1)**2));
+  return m;
+}
+function build(o,d,s,jd0){
+  if(o.star||d.star){const V=starVariants(o,d);V.forEach(v=>{v.m=mstar(v,s);v.T=v.m.T});return V}
+  return planetVariants(o,d,s,jd0);
+}
+
+/* ================= Aşamalar ================= */
+function mkPhases(v,s){
+  const m=v.m,ph=[],cs=v.cs,L=v.legs,add=(k,o)=>ph.push({k,d:k==="helio"?10+(v.assist?4:0):6,...o});
+  if(v.o.moon){const l=locInfo(MOON,cs.vinf,s);
+    add("ldep",{b:MOON,loc:l,th:Math.PI,dv:esc(MOON,cs.vinf,s),days:2*l.tp+l.th,title:"Ay çevresinde kaçış",first:1,
+      desc:`${n1(l.rp,0)} km yarıçaplı Ay yörüngesinde 2 tur; Δv = ${n1(esc(MOON,cs.vinf,s))} km/s ile hiperbolik kaçış (v∞ = ${n1(cs.vinf)} km/s).${s.lau==="surf"?` Yüzeyden yörüngeye çıkış için ayrıca ≈ ${n1(m.asc)} km/s gerekir.`:""}`});
+    add("cis",{dir:"in",days:cs.t+2*cs.tpE,title:"Ay’dan Dünya’ya dönüş",desc:`Ay mesafesinden alçalan elips, ${n1(cs.t,1)} gün; Dünya’da ${n1(cs.r0,0)} km yörüngeye yakalanma Δv = ${n1(cs.dv1)} km/s.`});
+  }
+  if(L.length){
+    const f=L[0],l=L[L.length-1],a=locInfo(f.o,f.v1,s),b=locInfo(l.d,l.v2,s),tN=v.T*365.25;
+    add("ldep",{b:f.o,loc:a,th:Math.atan2(f.u1[1],f.u1[0]),dv:m.dep,days:2*a.tp+a.th,title:`${f.o.n} çevresinde park yörüngesi ve kaçış`,first:!v.o.moon,
+      desc:`${n1(a.rp,0)} km yarıçaplı yörüngede 2 tur (tur başına ${n1(a.tp*24,1)} saat); periapsiste Δv = ${n1(m.dep)} km/s ile v∞ = ${n1(f.v1)} km/s hiperbolik kaçış. Etki küresine (≈ ${n1(a.rmax,0)} km) ≈ ${fd(a.th)} sonra ulaşılır.${m.asc&&!v.o.moon?` Yüzeyden çıkış ≈ ${n1(m.asc)} km/s (yörünge hızı ${n1(m.vc)} + yerçekimi kaybı ${n1(m.gl)} + sürtünme ${n1(m.dr)}).`:""}`});
+    add("helio",{days:tN,title:`Güneş merkezli transfer: ${f.o.n} → ${l.d.n}`,
+      desc:`${dstr(f.jd0)} → ${dstr(l.jd0+l.tof)} (${ft(v.T)}). Lambert çözücü ile bulundu; v∞ kalkış ${n1(f.v1)}, varış ${n1(l.v2)} km/s.${v.assist?` Jüpiter gravite yardımı ${dstr(L[1].jd0)} tarihinde; yardım maliyeti ${n1(v.fly)} km/s.`:""}${m.tcm?` Seyirde ≈ ${n1(m.tcm*1000,0)} m/s’lik rota düzeltmeleri yapılır.`:""}`});
+    add("larr",{b:l.d,loc:b,th:Math.atan2(-l.u2[1],-l.u2[0]),dv:m.arr,aero:m.aero,land:!v.d.moon&&m.land>0,days:2*b.tp+b.th,title:`${l.d.n} yaklaşması ve ${m.aero?"aerofren":"yakalanma"}`,
+      desc:`v∞ = ${n1(l.v2)} km/s ile yaklaşma; periapsiste ${m.aero?`aerofren sonrası kalan yanma ${n1(m.arr)} km/s`:`yakalanma yanması Δv = ${n1(m.arr)} km/s`}; ${!v.d.moon&&m.land>0?`ardından yüzeye iniş (≈ ${n1(m.land)} km/s)`:"ardından 2 tur yörünge"}.`});
+  }
+  if(v.d.moon){const l=locInfo(MOON,cs.vinf,s);
+    add("cis",{dir:"out",days:cs.t+2*cs.tpE,title:"Dünya’dan Ay’a transfer (TLI)",first:!L.length,desc:`${n1(cs.r0,0)} km yörüngede 2 tur; TLI yanması Δv = ${n1(cs.dv1)} km/s; Ay mesafesine ${n1(cs.t,1)} günde ulaşım.${!L.length&&s.lau==="surf"?` Yüzeyden çıkış ≈ ${n1(m.asc)} km/s.`:""}`});
+    add("larr",{b:MOON,loc:l,th:Math.PI,dv:cs.loi,land:m.land>0,days:2*l.tp+l.th,title:"Ay yakalanması (LOI)",desc:`v∞ = ${n1(cs.vinf)} km/s ile yaklaşma; LOI yanması Δv = ${n1(cs.loi)} km/s; ${m.land>0?`yüzeye iniş (≈ ${n1(m.land)} km/s)`:"ardından 2 tur yörünge"}.`});
+  }
+  return ph;
+}
+
+/* ================= Durum ================= */
+let O,Dn,variants=[],cur=null,ci=0,ph=[],A=0,tau=0,playing=true,last=0,orb={},jdS=0;
+const cv=$("cv"),ctx=cv.getContext("2d"),pk=$("pk"),pc=pk.getContext("2d");
+function size(){const w=cv.parentElement.clientWidth,h=Math.max(320,Math.min(580,w*.64)),r=devicePixelRatio||1;cv.width=w*r;cv.height=h*r;cv.style.height=h+"px";ctx.setTransform(r,0,0,r,0,0);pk.width=w*r;pk.height=240*r;pc.setTransform(r,0,0,r,0,0)}
+addEventListener("resize",()=>{size();drawPk()});
+function run(){
+  O=byN($("from").value);Dn=byN($("to").value);jdS=jdIn();
+  $("warn").textContent=O===Dn?"Kalkış ve varış aynı gök cismi. Lütfen farklı bir hedef seç.":"";
+  if(O!==Dn)refresh(true);
+}
+function refresh(reset){
+  if(!O||O===Dn)return;
+  const s=gs(),star=O.star||Dn.star;$("set").dataset.m=star?"st":"pl";
+  $("vx").textContent=s.x===0?"%0 (en tasarruflu)":`%${Math.round(s.x*100)} (min Δv’nin ${n1(1+1.5*s.x,2)} katına kadar)`;
+  $("vh").textContent=s.h+" km";$("vv").textContent="%"+Math.round(s.vs*100)+" nominal";
+  const frac=cur&&!reset&&A?tau/A:0;
+  variants=build(O,Dn,s,jdS);
+  if(!variants.length){$("warn").textContent="Bu seçim için Lambert çözümü bulunamadı; farklı bir kalkış tarihi dene.";return}
+  const base=build(O,Dn,IDEAL,jdS);variants.forEach((v,i)=>v.m0=(base[i]||base[0]).m);
+  const mt=Math.min(...variants.map(v=>v.m.T)),md=Math.min(...variants.map(v=>v.m.dv));
+  variants.forEach(v=>{v.tags=[];if(variants.length>1){if(v.m.T===mt)v.tags.push("en kısa");if(v.m.dv===md&&!v.star)v.tags.push("en tasarruflu")}});
+  const i=reset?(star?0:variants.reduce((q,v,k)=>v.m.dv<variants[q].m.dv?k:q,0)):Math.min(ci,variants.length-1);
+  pick(i,frac,reset);
+}
+function pick(i,frac=0,reset=true){
+  const s=gs();cur=variants[i];ci=i;
+  $("variants").innerHTML=variants.map((v,k)=>`<button data-i="${k}" class="${k===i?"on":""}">${v.name}${v.tags.map(t=>`<span class="badge">${t}</span>`).join("")}</button>`).join("");
+  document.querySelectorAll("#variants button").forEach(b=>b.onclick=()=>pick(+b.dataset.i,0,true));
+  if(cur.star){ph=[];A=16}else{ph=mkPhases(cur,s);let t=0;ph.forEach(p=>{p.at=t;t+=p.d});A=t;
+    if(cur.legs.length){const j=cur.legs[0].jd0;orb={};P.forEach(p=>{const o=[];for(let k=0;k<=120;k++){const q=pos(p,j+p.T*365.25*k/120);o.push([q[0]/AU,q[1]/AU])}orb[p.n]=o})}}
+  tau=frac*A;if(reset){playing=true;$("play").textContent="Duraklat"}
+  $("phases").innerHTML=cur.star?"":ph.map((p,k)=>`<button data-k="${k}">${k+1}. ${p.title}</button>`).join("");
+  document.querySelectorAll("#phases button").forEach(b=>b.onclick=()=>{tau=ph[+b.dataset.k].at;playing=true;$("play").textContent="Duraklat"});
+  $("pkw").hidden=!!cur.star||!cur.legs.length;
+  info();drawPk();gallery();
+}
+
+/* ================= Bilgi panelleri ================= */
+function info(){
+  const st=[],cd=[],fa=[],c=cur,m=c.m,m0=c.m0,s=gs();
+  if(c.star){
+    const f=[0,.03,.08,.15,.9,.999];
+    [[`${O.n} sisteminde hazırlık`,"Araç kalkış yörüngesinde sistem kontrolünden geçer, hedefe nişan alır."],
+     ["Hızlanma ve sistemden kaçış",c.c>.01?`${c.tech} ile ${n1(m.c,4)}c hıza ulaşılır.`:`${c.tech}; kaçış hızı elde edilir.`],
+     ["Heliopoz geçişi (yaklaşık 120 AU)","Güneş rüzgârı bölgesi geride kalır; araç yıldızlararası ortama girer."],
+     ["Yıldızlararası seyir",`Yaklaşık ${n1(m.tcm*1000,0)} m/s’lik rota düzeltmeleri yapılır.`],
+     [c.flyby?`${Dn.n} sistemine hızlı geçiş`:`${Dn.n} yaklaşımı ve frenleme`,c.flyby?"Fren yapılmaz; geçiş sırasında gözlem ve veri toplanır.":"Füzyon motoru ters yönde ateşlenir, araç yavaşlar."],
+     [c.flyby?"Veri aktarımı":"Hedef yörüngesine yerleşme",c.flyby?`Veriler ışık hızıyla yaklaşık ${n1(m.D,1)} yılda Dünya’ya ulaşır.`:"Araç hedef sistemde kararlı yörüngeye oturur."]]
+     .forEach((x,i)=>st.push([f[i]*A,x[0],x[1]]));
+    cd.push(["Mesafe",`${n1(m.D,2)} ışık yılı`,m.D>c.D+1e-9?`doğrudan ${n1(c.D,2)}; zorlu koşul sapması dahil`:`${n1(c.D*9.4607e12,0)} km`],["Seyir hızı",`%${n1(m.c*100,3)} c`,`${n1(m.c*CK,0)} km/s`],
+      ["Süre (Dünya zamanı)",ft(m.T),dT(m.T,m0.T)],["Gemi içi süre",ft(m.Ts),m.gam>1.001?`görelilik: γ = ${n1(m.gam,3)}`:"görelilik etkisi ihmal edilebilir"],
+      ["Gerekli Δv",`${n1(m.dv,0)} km/s`,dV(m.dv,m0.dv)],["Yakıt / enerji",m.mr?`Kütle oranı ${n1(m.mr,1)}`:"Dış enerji / yerçekimi",m.mr?`yakıt kütlesi %${n1((1-1/m.mr)*100,1)}`:`kinetik enerji ${m.ke.toExponential(1)} J/kg`],["Kalkan kütlesi",`%${n1(m.shield*100,1)}`,"toz çarpışmasına karşı"]);
+    fa.push(["Kütleçekim kuvvetleri","Güneş’in ve hedef yıldızın çekimi kaçış/frenleme enerjisini belirler; geçen yıldızlar ve yıldızlararası bulutlar rotayı saptırır. Çekim bozulmaları açıksa düzeltme Δv’si 1,5 katına çıkar.",`Düzeltme Δv ≈ ${n1(m.tcm*1000,0)} m/s; hız arttıkça orantılı büyür.`],
+      ["Atmosfer / ortam etkisi","Yıldızlararası ortamdaki toz ve gaz, yüksek hızda yıkıcıdır. Hız artarsa çarpışma enerjisi hızın karesiyle büyür, kalkan kalınlaşır.",`1 µg’lık toz tanesi ${m.dust.toExponential(1)} J (yaklaşık ${n1(m.dust/4.2e6,2)} kg TNT) enerjiyle çarpar.`],
+      ["Zorlu uzay koşulları","Radyasyon, kozmik ışın ve yoğun toz bulutları. Koşul seviyesi arttıkça kalkan kütlesi büyür ve rota uzar.",`Kalkan %${n1(m.shield*100,1)}, rota uzaması %${[0,1,3][s.cond]}.`],
+      ["Hassas rota hesapları","Yönlendirme hatası açısı küçüldükçe düzeltme Δv’si ve varış payı azalır.",`Düzeltme ${n1(m.tcm*1000,0)} m/s; varış payı ${ft(m.T*[.02,.01,.004][s.nav])}.`],
+      ["Görelilik","Yüksek hızda gemi saati Dünya saatinden yavaş işler.",`Dünya ${ft(m.T)}, gemi ${ft(m.Ts)}.`]);
+  }else{
+    ph.forEach(p=>st.push([p.at,p.title,p.desc+` (gerçek süre ≈ ${fd(p.days)})`]));
+    const L=c.legs,f=L[0],l=L[L.length-1],fr=mr=>n1((1-1/mr)*100,1),pay=p=>p>0?`faydalı yük %${n1(p*100,1)}`:"faydalı yük kalmıyor, görev taşınamaz";
+    if(f){cd.push(["Heliosentrik kalkış",dstr(f.jd0),`${f.o.n} etki küresinden çıkış`],["Varış",dstr(l.jd0+l.tof),`${l.d.n} etki küresi`])}else cd.push(["Başlangıç tarihi",dstr(jdS),"Dünya–Ay transferi"]);
+    cd.push(["Toplam süre",ft(m.T),dT(m.T,m0.T)],["Toplam Δv",`${n1(m.dv)} km/s`,dV(m.dv,m0.dv)],
+      ["Kimyasal itki (Isp 450 s)",`%${fr(m.mrC)} yakıt`,`ideal %${fr(m0.mrC)}; ${pay(m.payC)}`],["Elektrik itki (Isp 3000 s)",`%${fr(m.mrE)} yakıt`,`ideal %${fr(m0.mrE)}; ${pay(m.payE)}`]);
+    if(f){const a=pos(f.o,f.jd0),b=pos(f.d,f.jd0),dl=((Math.atan2(b[1],b[0])-Math.atan2(a[1],a[0]))/D2R+540)%360-180,syn=1/Math.abs(1/f.o.T-1/f.d.T);
+      cd.push(["Faz açısı (kalkışta)",`${n1(dl,1)}°`,`${f.d.n}, ${f.o.n} konumunun ${dl>=0?"önünde":"gerisinde"}`],["Fırlatma penceresi",`${ft(syn)} aralıkla`,"sinodik dönem"])}
+    const cs=c.cs;
+    fa.push(["Güneş’in kütleçekimi (Lambert)",L.length?"Transfer, Güneş çekimi altında iki gezegen konumunu birleştiren konik yörüngedir (Lambert problemi). Kalkış günü ve uçuş süresi taranır; hız tercihini artırırsan kısa süreli ama yüksek v∞’li çözümler seçilir.":"Dünya–Ay transferi Dünya çekimi altında Hohmann elipsidir; Güneş etkisi ihmal edilir.",
+        L.length?`Süre ${ft(c.T)}; v∞ kalkış ${n1(f.v1)}, varış ${n1(l.v2)} km/s.`:`Transfer ${n1(cs.t,1)} gün, TLI ${n1(cs.dv1)} km/s.`],
+      ["Efemeris (gezegen konumları)","Gezegenler dairesel değil, eliptik ve eğik yörüngelerde, farklı hızlarda hareket eder. Bu yüzden kalkış tarihi Δv’yi çok değiştirir; porkchop haritasında tek bir en iyi bölge görünür.",L.length?`Seçili kalkış ${dstr(f.jd0)}; arama penceresi ${ft(c.sr.win/365.25)}.`:"Ay dairesel yörünge olarak alındı."],
+      ["Gezegenlerin çekim kuyusu","Kalkış ve varışta Δv = √(v∞² + 2μ/r) − √(μ/r) kadar yanma gerekir. Park yörüngesini yükseltirsen kaçış Δv’si biraz azalır. Gaz devlerinde 4 gezegen yarıçapı sabit alınır.",
+        L.length?`${f.o.n}: ${n1(m.dep)} km/s (yörünge ${n1(park(f.o,s),0)} km); ${l.d.n}: ${n1(m.arr)} km/s.`:`Dünya LEO ${n1(cs.r0,0)} km; LOI ${n1(cs.loi)} km/s.`],
+      ["Çekim bozulmaları (n-cisim)","Jüpiter gibi kütleli cisimler rotayı saptırır; yolculuk uzadıkça sapma birikir. Seçeneği açarsan düzeltme Δv’si 1,5 katına çıkar.",`Düzeltme ${n1(m.tcm*1000,0)} m/s ${s.pert?"(bozulmalar dahil)":"(yalnızca seyrüsefer hatası)"}.`],
+      ["Atmosferik etkiler","Yüzeyden kalkışta yerçekimi kaybı ve atmosfer sürtünmesi Δv ekler. Atmosferli hedefte (Venüs, Dünya, Mars) aerofren varış Δv’sini yaklaşık %85 düşürür, ancak ısı kalkanı kütlesi (%5) ekler; varış hızı sınırı aşarsa kullanılamaz.",
+        (m.asc?`Yüzeyden kalkış ${n1(m.asc)} km/s (kayıp ${n1(m.gl+m.dr)}). `:"")+(m.aero?`Aerofren açık, varış ${n1(m.arr)} km/s.`:m.aeroNo?`Aerofren uygulanamaz: varış hızı ${n1(l.v2)} km/s > ${m.aeroNo} km/s.`:m.asc?"":"Seçili ayarlarda atmosfer etkisi yok.")],
+      ["Zorlu uzay koşulları","Radyasyon, güneş fırtınaları ve mikrometeoroidler kalkan kütlesi gerektirir; koşul seviyesi arttıkça bekleme günleri de artar. Jüpiter’in radyasyon kuşağı ek kalkan ister.",`Kalkan %${n1(m.shield*100,1)}, bekleme ${m.hold} gün.`],
+      ["Hassas rota hesapları","Seyrüsefer doğruluğu düştükçe varış payı ve düzeltme Δv’si büyür.",`Varış payı ${n1(m.nd,0)} gün, düzeltme ${n1(m.tcm*1000,0)} m/s.`]);
+    if(c.assist)fa.push(["Gravite yardımı","Jüpiter’in çekimi hız vektörünü yakıtsız çevirir; yeterince dönemiyorsa kalan fark motorla giderilir. İki Lambert bacağı birleştirilip yardım maliyeti hesaplanır.",`Yardım maliyeti ${n1(c.fly)} km/s; toplam süre ${ft(c.T)}.`]);
+    if(cs)fa.push(["Dünya ve Ay çekimi","TLI yanması elipsi Ay mesafesine uzatır; Ay’ın çekimi varışta hiperbolik yaklaşma yaratır. Park yörüngesini yükseltmek TLI Δv’sini biraz değiştirir.",`TLI ${n1(cs.dv1)} km/s, LOI ${n1(cs.loi)} km/s, Ay’da v∞ ${n1(cs.vinf)} km/s.`]);
+  }
+  $("steps").innerHTML=st.map(x=>`<li data-t="${x[0]}"><b>${x[1]}</b>${x[2]}</li>`).join("");
+  $("cards").innerHTML=cd.map(x=>`<div class="card"><small>${x[0]}</small><strong>${x[1]}</strong><span>${x[2]}</span></div>`).join("");
+  $("fac").innerHTML=fa.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td><td>${x[2]}</td></tr>`).join("");
+  $("mats").innerHTML=mats().map(x=>`<li>${x}</li>`).join("");
+}
+function mats(){
+  const m=["Ana itki: LOX/LH2 kimyasal motor (Isp ≈ 450 s) veya iyon motoru","Yakıt tankları (alüminyum-lityum alaşımı) ve basınçlandırma sistemi","Güdüm: atalet ölçüm birimi, yıldız izleyici, güneş sensörü","Derin uzay haberleşme anteni (X/Ka bandı) ve yedek vericiler","Radyasyona dayanıklı bilgisayar ve elektronik"],s=gs();
+  if(cur.star){
+    m.push("Yıldızlararası toz ve çarpışma kalkanı (berilyum/karbon kompozit)","Uzun ömürlü nükleer güç kaynağı (RTG veya füzyon reaktörü)");
+    cur.c>.01&&m.push(cur.flyby?"Dielektrik yelken kaplaması ve lazer yön takip sistemi":"Füzyon yakıtı (D/He-3) ve manyetik hapsetme bobinleri");
+    cur.flyby||m.push("Frenleme için manyetik yelken ya da ters itki sistemi");return m;
+  }
+  const all=[cur.o,cur.d,...cur.legs.flatMap(l=>[l.o,l.d])];
+  if(all.some(b=>!b.moon&&b.a<.8))m.push("Çok katmanlı termal kalkan ve ısıya dayanıklı güneş panelleri");
+  if(all.some(b=>!b.moon&&b.a>3))m.push("Plütonyum-238 RTG (güneş ışığı yetersiz olduğu için)","Radyasyon kasası (titanyum) ve büyük yüksek kazançlı anten");else m.push("Güneş panelleri ve lityum-iyon bataryalar");
+  if(cur.m.aero)m.push(`Aerofren ısı kalkanı (${cur.d.n} atmosferinde yavaşlama)`);
+  if(cur.m.asc)m.push("Yüzeyden kalkış için çok kademeli fırlatma aracı");
+  if(cur.m.land)m.push("İniş takımı, paraşüt (atmosfer varsa) ve iniş motorları");
+  if(cur.d.g)m.push("Yakalanma yanması için yüksek itkili motor; radyasyon kuşaklarına karşı ekranlama");
+  if(cur.legs.length>1)m.push("Gravite yardımı için hassas yörünge düzeltme itkileyicileri");
+  if(cur.cs)m.push("Ay yörüngesi için yüksek hassasiyetli iniş/yanaşma sensörleri (lidar)");
+  if(s.cond>0)m.push("Güneş fırtınası sığınağı ve ek mikrometeoroid koruması");
+  if(cur.m.T>3)m.push("Mürettebat varsa: uzun süreli yaşam destek, su geri dönüşümü ve kozmik ışın koruması");return m;
+}
+
+/* ================= Uzay aracı galerisi ================= */
+const sv=(x)=>`<svg viewBox="0 0 120 80" aria-hidden="true">${x}</svg>`;
+const g1='fill="#2a2a36" stroke="#9ea3b8"',g2='fill="#15151c" stroke="#9ea3b8"',g3='fill="#1d3a4d" stroke="#7fd6ff"';
+const DES=[
+ {id:"orion",n:"Orion sınıfı mürettebatlı Ay aracı",isp:316,svg:sv(`<polygon points="52,8 68,8 74,30 46,30" ${g1}/><rect x="46" y="30" width="28" height="24" ${g2}/><polygon points="54,54 66,54 70,66 50,66" ${g1}/><rect x="6" y="36" width="36" height="10" ${g3}/><rect x="78" y="36" width="36" height="10" ${g3}/>`),
+  sp:[["Sınıf","Mürettebatlı kimyasal Ay aracı (Artemis/Orion)"],["Kütle","≈ 26 ton (kapsül + servis modülü)"],["Ana motor","AJ10-190, ≈ 26,7 kN itki"],["Isp","≈ 316 s (hipergolik MMH/N2O4)"],["Güç","4 güneş paneli kanadı, ≈ 11 kW"],["Mürettebat","4 astronot, ≈ 21 güne kadar görev"],["Isı kalkanı","Ablatif Avcoat, çap ≈ 5 m; Ay dönüşünde ≈ 11 km/s girişe dayanır"],["Uygun rota","Dünya–Ay ve kısa kimyasal transferler"]]},
+ {id:"cassini",n:"Cassini sınıfı RTG’li dış gezegen orbiter’ı",isp:308,svg:sv(`<path d="M28 24 Q60 -6 92 24Z" ${g1}/><rect x="52" y="24" width="16" height="30" ${g2}/><rect x="36" y="40" width="12" height="8" fill="#5a3b20" stroke="#ffb347"/><rect x="72" y="40" width="12" height="8" fill="#5a3b20" stroke="#ffb347"/><line x1="68" y1="34" x2="112" y2="30" stroke="#9ea3b8"/><polygon points="56,54 64,54 66,62 54,62" ${g1}/>`),
+  sp:[["Sınıf","Dış gezegen orbiter’ı, gravite yardımlı rota"],["Fırlatma kütlesi","≈ 5,7 ton (Huygens dahil)"],["Yakıt","≈ 3 ton bipropellant"],["Ana motor","445 N, Isp ≈ 308 s"],["Güç","3 RTG, ≈ 0,8 kW (güneş ışığı yetersiz)"],["Anten","≈ 4 m yüksek kazançlı anten"],["Rota örneği","Venüs–Venüs–Dünya–Jüpiter yardımlarıyla ≈ 6,7 yıl"],["Uygun rota","Jüpiter ve ötesi"]]},
+ {id:"dawn",n:"Dawn sınıfı iyon sondası",isp:3100,svg:sv(`<rect x="4" y="30" width="46" height="16" ${g3}/><rect x="70" y="30" width="46" height="16" ${g3}/><path d="M16 30v16M28 30v16M40 30v16M80 30v16M92 30v16M104 30v16" stroke="#7fd6ff"/><rect x="50" y="26" width="20" height="24" ${g2}/><circle cx="60" cy="58" r="3" fill="#7fd6ff"/><path d="M60 62v12" stroke="#7fd6ff" stroke-dasharray="2 2"/>`),
+  sp:[["Sınıf","Güneş-elektrik itkili sonda"],["Fırlatma kütlesi","≈ 1,24 ton (≈ 425 kg ksenon dahil)"],["İtki","3 NSTAR iyon motoru, en çok ≈ 91 mN"],["Isp","≈ 3100 s"],["Güç","≈ 10 kW güneş panelleri (1 AU’da)"],["Toplam Δv","≈ 11 km/s (çok uzun yanma süreleriyle)"],["Avantaj","Çok az yakıt; Vesta ve Ceres gibi çoklu hedefler"],["Uygun rota","Yüksek Δv’li, süresi uzun görevler"]]},
+ {id:"parker",n:"Parker sınıfı Güneş yakın sondası",isp:230,svg:sv(`<ellipse cx="60" cy="14" rx="32" ry="7" fill="#3a2a1a" stroke="#ffb347"/><polygon points="52,20 68,20 64,58 56,58" ${g2}/><polygon points="52,34 38,50 40,54 54,42" ${g3}/><polygon points="68,34 82,50 80,54 66,42" ${g3}/>`),
+  sp:[["Sınıf","İç güneş sistemi sıcak ortam sondası"],["Kütle","≈ 685 kg"],["Isı kalkanı","Karbon-karbon köpük, çap ≈ 2,3 m, kalınlık ≈ 11,4 cm; ön yüz ≈ 1400 °C"],["En yakın geçiş","≈ 6,2 milyon km; hız ≈ 192 km/s"],["Güç","Su soğutmalı, gölgede kalan güneş panelleri"],["Rota","Çoklu Venüs gravite yardımları"],["İtki","Küçük hidrazin itkileyiciler (Isp ≈ 230 s)"],["Uygun rota","Merkür, Venüs, Güneş yakını"]]},
+ {id:"ntp",n:"Nükleer termal Mars aracı (konsept)",isp:900,svg:sv(`<line x1="14" y1="40" x2="100" y2="40" stroke="#9ea3b8" stroke-width="2"/><circle cx="20" cy="40" r="12" fill="none" stroke="#7fd6ff"/><rect x="36" y="30" width="34" height="20" rx="8" ${g2}/><rect x="74" y="34" width="14" height="12" fill="#5a3b20" stroke="#ffb347"/><polygon points="88,36 102,30 102,50 88,44" ${g1}/><line x1="76" y1="24" x2="86" y2="34" stroke="#9ea3b8"/><line x1="76" y1="56" x2="86" y2="46" stroke="#9ea3b8"/>`),
+  sp:[["Sınıf","Mürettebatlı derin uzay transfer aracı (konsept)"],["İtki","Nükleer termal roket, itici gaz hidrojen"],["Isp","≈ 850–900 s (kimyasalın yaklaşık 2 katı)"],["İtki gücü","≈ 110 kN sınıfı motor (NERVA türevi)"],["Kütle","Yüzlerce ton (konsept)"],["Mars süresi","≈ 3–4 ay (kimyasalda 6–9 ay)"],["Koruma","Hidrojen tankı ve gölge kalkanı radyasyonu azaltır"],["Uygun rota","Mars, iç gezegenler"]]},
+ {id:"ikaros",n:"IKAROS sınıfı güneş yelkeni",isp:null,svg:sv(`<polygon points="60,6 112,40 60,74 8,40" fill="#1d3a4d44" stroke="#7fd6ff"/><circle cx="60" cy="40" r="7" ${g2}/>`),
+  sp:[["Sınıf","Güneş ışığı basıncıyla çalışan yelken"],["Toplam kütle","≈ 315 kg"],["Yelken","14 m × 14 m, kalınlık ≈ 7,5 µm"],["Yakıt","İtkisiz; ışık basıncı ve ince film güneş hücreleri"],["Kontrol","Sıvı kristal paneller yansıtmayı değiştirir"],["Örnek","JAXA IKAROS (2010)"],["Güçlü yanı","Yakıt sınırı yok, sürekli ivme"],["Zayıf yanı","İvme çok küçük (mm/s² altı), süre uzun"]]},
+ {id:"starshot",n:"Işık yelkeni mikro sonda (Starshot konsepti)",isp:null,svg:sv(`<circle cx="60" cy="30" r="14" fill="#1d3a4d44" stroke="#7fd6ff"/><rect x="58" y="28" width="4" height="4" fill="#fff"/><path d="M40 78L56 46M60 78V46M80 78L64 46" stroke="#ffb347" stroke-dasharray="3 3"/>`),
+  sp:[["Sınıf","Yıldızlararası gram ölçekli sonda (konsept)"],["Kütle","Gram mertebesi (çip + yelken)"],["Yelken","Yaklaşık metre ölçekli, yansıtıcı dielektrik"],["Hızlanma","Yerden ≈ 100 GW lazer dizisi, dakikalar süren itme"],["Hız","≈ 0,2c (%20 ışık hızı)"],["Alfa Centauri süresi","≈ 20+ yıl, ardından veri yolculuğu ≈ 4 yıl"],["Frenleme","Yok; hızlı geçiş (flyby)"],["Uygun rota","En yakın yıldızlar"]]},
+ {id:"daedalus",n:"Daedalus sınıfı füzyon aracı (konsept)",ve:.033,svg:sv(`<polygon points="54,4 66,4 64,14 56,14" ${g1}/><circle cx="60" cy="26" r="11" ${g2}/><circle cx="60" cy="48" r="13" ${g2}/><polygon points="52,60 68,60 74,76 46,76" fill="#2a2a36" stroke="#7fd6ff"/>`),
+  sp:[["Sınıf","Yıldızlararası füzyon roketi (British Interplanetary Society, 1970’ler)"],["Toplam kütle","≈ 54 000 ton (≈ 50 000 ton itici gaz, ≈ 500 ton yük)"],["İtki","Deuterium/Helyum-3 atalet hapsetmeli füzyon"],["Egzoz hızı","≈ 10 000 km/s"],["Hız","≈ %12 c, iki kademeli"],["Hedef örneği","Barnard Yıldızı, ≈ 50 yıl"],["Frenleme","Yok; hızlı geçiş, sondalar gönderir"],["Uygun rota","Yakın yıldızlar (kavramsal)"]]}
+];
+function recIds(){
+  if(!cur)return[];
+  if(cur.star)return cur.c>.15?["starshot"]:cur.c>.05?["daedalus"]:cur.c>.0003?["parker"]:["cassini"];
+  if(cur.o.moon||cur.d.moon)return["orion"];
+  const a=[cur.o,cur.d,...cur.legs.flatMap(l=>[l.o,l.d])];
+  if(a.some(b=>b.a>3))return["cassini","dawn"];
+  if(a.some(b=>b.a<.8))return["parker","dawn"];
+  return["ntp","dawn","orion"];
+}
+let sel=null;
+function gallery(){
+  const rec=recIds();
+  $("gal").innerHTML=DES.map(d=>`<button data-id="${d.id}" class="${rec.includes(d.id)?"rec":""} ${sel===d.id?"on":""}">${d.svg}<span>${d.n}</span>${rec.includes(d.id)?'<span class="badge">önerilen</span>':""}</button>`).join("");
+  document.querySelectorAll("#gal button").forEach(b=>b.onclick=()=>{sel=b.dataset.id;gallery()});
+  const d=DES.find(x=>x.id===sel),box=$("gdet");
+  if(!d){box.hidden=true;return}
+  const m=cur.m;let fuel="Bu araç itkisiz çalışır (ışık basıncı veya dış enerji); yakıt oranı hesaplanmaz.";
+  if(d.isp||d.ve){const ve=d.isp?9.80665*d.isp/1000:d.ve*CK,MR=Math.exp(m.dv/ve),fr=(1-1/MR)*100;
+    fuel=`Bu görevin Δv’si ${n1(m.dv,cur.star?0:2)} km/s. Bu aracın itki türüyle yakıt kütlesi ${fr>99.99?"neredeyse tüm kütle":"%"+n1(fr,1)}; ${fr<85?"görev bu itkiyle uygulanabilir görünüyor.":"görev bu itkiyle uygulanamaz."}`}
+  box.hidden=false;box.innerHTML=`<h3>${d.n}</h3>${rec.includes(d.id)?'<span class="badge" style="margin:0">Bu görev için önerilen</span>':""}<table><tbody>${d.sp.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}<tr><td>Bu görev için</td><td>${fuel}</td></tr></tbody></table>`;
+}
+
+const G=[["Δv (delta-v)","Bir aracın hızını değiştirmek için gereken toplam hız değişimi; yakıt ihtiyacının ölçüsüdür."],["Efemeris","Gök cisimlerinin zamana göre konumlarını veren tablo veya model."],["Lambert problemi","İki konum ve bir uçuş süresi verildiğinde bu iki noktayı birleştiren Güneş çekimi altındaki yörüngeyi bulma problemi."],["Porkchop grafiği","Kalkış günü ve uçuş süresine göre Δv haritası; en iyi pencere tek bir koyu bölge olarak görünür."],["Hohmann transferi","İki dairesel yörünge arasında en az yakıtla geçişi sağlayan elips; iki yanma gerektirir."],["Etki küresi (SOI)","Bir gezegenin çekiminin Güneş’inkinden baskın olduğu bölge; yama konik yaklaşımının sınırı."],["Periapsis","Yörüngenin merkez cisme en yakın noktası; yanmalar en verimli burada yapılır."],["Hiperbolik yörünge","Gezegenden kaçan ya da yaklaşan aracın izlediği açık yörünge."],["Gravite yardımı","Aracın bir gezegenin yakınından geçip çekimiyle hız ve yön değiştirmesi."],["Park yörüngesi","Kalkıştan önce ya da varıştan sonra aracın beklediği alçak yörünge."],["v∞ (hiperbolik aşırı hız)","Gezegenin çekiminden çıkıldıktan sonra kalan hız."],["TLI / LOI","Ay’a transfer yanması (Trans-Lunar Injection) ve Ay yörüngesine yakalanma yanması (Lunar Orbit Insertion)."],["Yerçekimi kaybı","Yüzeyden kalkışta motorun, aracı yerçekimine karşı taşırken harcadığı verimsiz Δv."],["Aerofren","Atmosferde sürtünmeyle yavaşlayarak yakıt harcamadan yörüngeye yakalanma."],["TCM (rota düzeltme manevrası)","Seyrüsefer hatalarını ve çekim bozulmalarını gidermek için yapılan küçük yanmalar."],["Faz açısı","Kalkışta hedefin kalkış gezegenine göre olması gereken açısal konum."],["Sinodik dönem","İki gezegenin aynı göreli konuma yeniden gelme süresi; pencereler bu sıklıkla açılır."],["Tsiolkovski denklemi","Δv = ve · ln(m0/m1); yakıt kütlesini Δv ile ilişkilendirir."],["Isp (özgül itki)","Motorun yakıt verimi; yüksek Isp, daha az yakıt demektir."],["Oberth etkisi","Yanmanın çekim merkezine yakın yapıldığında daha verimli olması."],["Heliopoz","Güneş rüzgârının yıldızlararası ortama karıştığı sınır (~120 AU)."],["Zaman genişlemesi","Işık hızına yakın giden aracın saatinin Dünya saatinden yavaş işlemesi."],["Işık yılı","Işığın bir yılda aldığı yol; yaklaşık 9,46 trilyon km."],["RTG","Radyoaktif bozunma ısısından elektrik üreten güç kaynağı."]];
+$("gloss").innerHTML=G.map(g=>`<details><summary>${g[0]}</summary><p>${g[1]}</p></details>`).join("");
+
+/* ================= Çizim ================= */
+function drawPk(){
+  if(!cur||cur.star||!cur.legs.length||!cur.sr)return;
+  const sr=cur.sr,W=pk.clientWidth,H=240,cw=W/sr.ND,ch=H/sr.NT;pc.clearRect(0,0,W,H);
+  for(let i=0;i<sr.ND;i++)for(let j=0;j<sr.NT;j++){const dv=sr.G[i][j];if(dv===null)continue;const t=Math.min(1,(dv-sr.gmin)/(sr.gmin*1.5));pc.fillStyle=`hsl(${200-170*t},80%,${58-40*t}%)`;pc.fillRect(i*cw,H-(j+1)*ch,cw+1,ch+1)}
+  const l=cur.legs[0];if(!cur.assist){const x=(l.jd0-sr.jd0)/sr.win*W,y=H-(l.tof-sr.t0)/(sr.t1-sr.t0)*H;pc.strokeStyle="#fff";pc.lineWidth=2;pc.beginPath();pc.arc(x,y,7,0,7);pc.stroke()}
+  pc.fillStyle="#fff";pc.font="12px system-ui";pc.textAlign="left";pc.fillText(dstr(sr.jd0),6,H-6);pc.textAlign="right";pc.fillText(dstr(sr.jd0+sr.win),W-6,H-6);pc.fillText(n1(sr.t1,0)+" gün",W-6,14);pc.textAlign="left";pc.fillText(n1(sr.t0,0)+" gün",6,H-20);
+}
+function draw(){
+  const W=cv.clientWidth,H=parseFloat(cv.style.height);ctx.clearRect(0,0,W,H);
+  if(cur.star)return drawStar(W,H);
+  let k=ph.findIndex(p=>tau<p.at+p.d-1e-9);if(k<0)k=ph.length-1;
+  const p=ph[k],u=Math.min(1,Math.max(0,(tau-p.at)/p.d));p.idx=k;
+  ({ldep:drawLocal,larr:drawLocal,helio:drawHelio,cis:drawCis})[p.k](p,u,W,H);
+  return{p,u};
+}
+function burn(x,y,u,c0,txt){const d=Math.abs(u-c0);if(d>.09)return;ctx.strokeStyle="#ffb347";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,8+34*(d/.09),0,7);ctx.stroke();ctx.fillStyle="#ffb347";ctx.font="600 13px system-ui";ctx.textAlign="left";ctx.fillText(txt,x+14,y-12)}
+function hyp(L,H,th,sgn){const nu=2*Math.atan(Math.sqrt((L.e+1)/(L.e-1))*Math.tanh(H/2));return{r:L.a*(L.e*Math.cosh(H)-1),a:th+nu}}
+function drawLocal(p,u,W,H){
+  const L=p.loc,b=p.b,arr=p.k==="larr",cx=W/2,cy=H/2,mx=Math.min(W,H)/2-36,rpx=Math.min(78,mx*.3);
+  const lr=r=>r<=L.rp?rpx*r/L.rp:rpx+(mx-rpx)*Math.log(r/L.rp)/Math.log(L.rmax/L.rp),pt=(r,a)=>[cx+lr(r)*Math.cos(a),cy-lr(r)*Math.sin(a)];
+  const thp=arr?p.th+L.nu:p.th-L.nu,N=2,sp=.5,landing=arr&&p.land;
+  ctx.textAlign="left";ctx.lineWidth=1;
+  ctx.strokeStyle="#22222c";ctx.setLineDash([3,5]);ctx.beginPath();ctx.arc(cx,cy,mx,0,7);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle="#55596e";ctx.font="11px system-ui";ctx.fillText(`Etki küresi (SOI) ≈ ${n1(L.rmax,0)} km`,cx+mx*.5,cy-mx*.88);
+  if(b.atm){ctx.fillStyle="rgba(90,169,255,.18)";ctx.beginPath();ctx.arc(cx,cy,rpx*(b.R+100)/L.rp,0,7);ctx.fill()}
+  ctx.fillStyle=b.c;ctx.beginPath();ctx.arc(cx,cy,rpx*b.R/L.rp,0,7);ctx.fill();
+  ctx.strokeStyle="#3a3a48";ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(cx,cy,rpx,0,7);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle="#9ea3b8";ctx.font="12px system-ui";ctx.fillText(b.n,cx-12,cy+4+rpx*b.R/L.rp+14);ctx.fillText(`Park yörüngesi ${n1(L.rp,0)} km`,cx+rpx+6,cy-6);
+  ctx.strokeStyle="#2f4a5a";ctx.lineWidth=1.5;ctx.beginPath();
+  for(let i=0;i<=120;i++){const h=(arr?-1:1)*L.H*(arr?1-i/120:i/120),q=hyp(L,h,thp),[x,y]=pt(q.r,q.a);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke();
+  let sc,trail=[];
+  if(!arr){
+    if(u<sp){const f=u/sp,a=thp-2*Math.PI*N*(1-f);sc=pt(L.rp,a);ctx.strokeStyle="#7fd6ff";ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<=200;i++){const aa=thp-2*Math.PI*N*(1-f*i/200),[x,y]=pt(L.rp,aa);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke()}
+    else{const f=(u-sp)/(1-sp);ctx.strokeStyle="#7fd6ff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,rpx,0,7);ctx.stroke();ctx.beginPath();
+      for(let i=0;i<=80;i++){const q=hyp(L,L.H*f*i/80,thp),[x,y]=pt(q.r,q.a);i?ctx.lineTo(x,y):ctx.moveTo(x,y);sc=[x,y]}ctx.stroke()}
+    const bp=pt(L.rp,thp);burn(bp[0],bp[1],u,sp,`Kaçış yanması Δv ≈ ${n1(p.dv)} km/s`);
+  }else{
+    if(u<sp){const f=u/sp;ctx.strokeStyle="#7fd6ff";ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<=80;i++){const q=hyp(L,-L.H*(1-f*i/80),thp),[x,y]=pt(q.r,q.a);i?ctx.lineTo(x,y):ctx.moveTo(x,y);sc=[x,y]}ctx.stroke()}
+    else{const f=(u-sp)/(1-sp),lf=landing&&f>.75?(f-.75)/.25:0;ctx.strokeStyle="#7fd6ff";ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<=80;i++){const q=hyp(L,-L.H+L.H*i/80,thp),[x,y]=pt(q.r,q.a);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke();
+      ctx.beginPath();const af=Math.min(f,landing?.75:1);for(let i=0;i<=200;i++){const a=thp+2*Math.PI*N*af*i/200,[x,y]=pt(L.rp,a);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke();
+      const a=thp+2*Math.PI*N*af;sc=lf?pt(L.rp-(L.rp-b.R)*lf,a+lf*3):pt(L.rp,a)}
+    const bp=pt(L.rp,thp);burn(bp[0],bp[1],u,sp,p.aero?`Aerofren + yanma ≈ ${n1(p.dv)} km/s`:`Yakalanma yanması Δv ≈ ${n1(p.dv)} km/s`);
+  }
+  if(sc){ctx.fillStyle="#fff";ctx.shadowColor="#7fd6ff";ctx.shadowBlur=14;ctx.beginPath();ctx.arc(sc[0],sc[1],4.5,0,7);ctx.fill();ctx.shadowBlur=0}
+  ctx.fillStyle="#9ea3b8";ctx.font="12px system-ui";ctx.fillText(`${p.title}. Radyal ölçek logaritmiktir.  v∞ = ${n1(L.vi)} km/s`,12,H-12);
+}
+function drawCis(p,u,W,H){
+  const cs=cur.cs,out=p.dir==="out",cx=W/2,cy=H/2,mx=Math.min(W,H)/2-34,px0=24,w=2*Math.PI/(27.32*86400),tt=cs.t*86400,sp=out?.3:.7;
+  const g=r=>r<=cs.r0?px0*r/cs.r0:px0+(mx-px0)*(Math.sqrt(r)-Math.sqrt(cs.r0))/(Math.sqrt(cs.rM)-Math.sqrt(cs.r0)),pt=(r,a)=>[cx+g(r)*Math.cos(a),cy-g(r)*Math.sin(a)];
+  const ell=M=>{let E=M;for(let i=0;i<25;i++)E-=(E-cs.e*Math.sin(E)-M)/(1-cs.e*Math.cos(E));return{r:cs.a*(1-cs.e*Math.cos(E)),nu:2*Math.atan2(Math.sqrt(1+cs.e)*Math.sin(E/2),Math.sqrt(1-cs.e)*Math.cos(E/2))}};
+  const pos2=f=>{const q=ell(out?Math.PI*f:Math.PI+Math.PI*f);return pt(q.r,q.nu+(out?0:Math.PI))};
+  ctx.textAlign="left";ctx.strokeStyle="#2a2a36";ctx.setLineDash([4,6]);ctx.lineWidth=1;ctx.beginPath();ctx.arc(cx,cy,mx,0,7);ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle="#2f4a5a";ctx.beginPath();for(let i=0;i<=120;i++){const[x,y]=pos2(i/120);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke();
+  ctx.strokeStyle="#3a3a48";ctx.beginPath();ctx.arc(cx,cy,px0,0,7);ctx.stroke();
+  ctx.fillStyle=EARTH.c;ctx.beginPath();ctx.arc(cx,cy,px0*EARTH.R/cs.r0,0,7);ctx.fill();
+  const f=u<sp&&out?0:(out?(u-sp)/(1-sp):Math.min(1,u/sp)),mAng=out?Math.PI-w*tt+w*tt*Math.min(1,f):w*tt*Math.min(1,u/sp);
+  const[mx2,my2]=[cx+mx*Math.cos(mAng),cy-mx*Math.sin(mAng)];
+  ctx.fillStyle=MOON.c;ctx.beginPath();ctx.arc(mx2,my2,7,0,7);ctx.fill();ctx.fillStyle="#9ea3b8";ctx.font="12px system-ui";ctx.fillText("Ay",mx2+10,my2+4);ctx.fillText("Dünya",cx+8,cy+px0+16);ctx.fillText(`LEO ${n1(cs.r0,0)} km`,cx+px0+6,cy-6);
+  let sc;ctx.strokeStyle="#7fd6ff";ctx.lineWidth=2;
+  if(out){
+    if(u<sp){const a=2*Math.PI*2*(u/sp);sc=pt(cs.r0,a);ctx.beginPath();for(let i=0;i<=200;i++){const[x,y]=pt(cs.r0,2*Math.PI*2*(u/sp)*i/200);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke()}
+    else{ctx.beginPath();ctx.arc(cx,cy,px0,0,7);ctx.stroke();ctx.beginPath();for(let i=0;i<=100;i++){const[x,y]=pos2(f*i/100);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke();sc=pos2(f)}
+    const b=pt(cs.r0,0);burn(b[0],b[1],u,sp,`TLI Δv ≈ ${n1(cs.dv1)} km/s`);
+  }else{
+    if(u<sp){ctx.beginPath();for(let i=0;i<=100;i++){const[x,y]=pos2(f*i/100);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke();sc=pos2(f)}
+    else{ctx.beginPath();for(let i=0;i<=100;i++){const[x,y]=pos2(i/100);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke();const a=Math.PI+2*Math.PI*2*((u-sp)/(1-sp));ctx.beginPath();for(let i=0;i<=200;i++){const[x,y]=pt(cs.r0,Math.PI+2*Math.PI*2*((u-sp)/(1-sp))*i/200);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke();sc=pt(cs.r0,a)}
+    const b=pt(cs.r0,Math.PI);burn(b[0],b[1],u,sp,`LEO yakalanma Δv ≈ ${n1(cs.dv1)} km/s`);
+  }
+  ctx.fillStyle="#fff";ctx.shadowColor="#7fd6ff";ctx.shadowBlur=14;ctx.beginPath();ctx.arc(sc[0],sc[1],4.5,0,7);ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle="#9ea3b8";ctx.fillText(`${p.title}. Mesafeler karekök ölçeklidir; Ay hareket halindedir.`,12,H-12);
+}
+function drawHelio(p,u,W,H){
+  const L=cur.legs,tot=L.reduce((q,l)=>q+l.tof,0),tN=u*tot,cx=W/2,cy=H/2,k=Math.min(W,H)/2*.9/Math.sqrt(32);
+  const xy=(x,y)=>{const r=Math.hypot(x,y)||1e-9,q=k*Math.sqrt(r);return[cx+q*x/r,cy-q*y/r]};
+  const jd=L[0].jd0+tN;ctx.textAlign="left";ctx.lineWidth=1;
+  P.forEach(q=>{ctx.strokeStyle="#1b1b24";ctx.beginPath();orb[q.n].forEach((a,i)=>{const[x,y]=xy(a[0],a[1]);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()});
+  ctx.fillStyle="#ffd36b";ctx.beginPath();ctx.arc(cx,cy,7,0,7);ctx.fill();ctx.font="12px system-ui";ctx.fillText("Güneş",cx+10,cy+16);
+  const route=new Set(L.flatMap(l=>[l.o.n,l.d.n]));
+  P.forEach(q=>{const a=pos(q,jd),[x,y]=xy(a[0]/AU,a[1]/AU),rt=route.has(q.n);ctx.fillStyle=q.c;ctx.beginPath();ctx.arc(x,y,q.g?5:3.5,0,7);ctx.fill();
+    if(rt){ctx.strokeStyle="#fff";ctx.beginPath();ctx.arc(x,y,9,0,7);ctx.stroke()}ctx.fillStyle=rt?"#fff":"#8d93aa";ctx.font=(rt?"600 ":"")+"12px system-ui";ctx.fillText(q.n,x+(rt?12:8),y+4)});
+  let sc=null,acc=0;
+  L.forEach(l=>{
+    const N=l.samples.length-1;ctx.strokeStyle="#2f4a5a";ctx.lineWidth=1.5;ctx.beginPath();l.samples.forEach((a,i)=>{const[x,y]=xy(a[0]/AU,a[1]/AU);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();
+    const lf=Math.min(1,Math.max(0,(tN-acc)/l.tof));acc+=l.tof;if(lf<=0)return;
+    const fi=lf*N,i0=Math.min(N-1,Math.floor(fi)),fr=fi-i0;ctx.strokeStyle="#7fd6ff";ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<=i0;i++){const[x,y]=xy(l.samples[i][0]/AU,l.samples[i][1]/AU);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}
+    const a=l.samples[i0],b=l.samples[i0+1],q=[a[0]+(b[0]-a[0])*fr,a[1]+(b[1]-a[1])*fr];sc=xy(q[0]/AU,q[1]/AU);ctx.lineTo(sc[0],sc[1]);ctx.stroke();
+    const s0=xy(l.samples[0][0]/AU,l.samples[0][1]/AU);ctx.fillStyle="#ffb347";ctx.beginPath();ctx.arc(s0[0],s0[1],4,0,7);ctx.fill();
+    if(lf>=1&&L.length>1&&l===L[0]){ctx.fillStyle="#ffb347";ctx.fillText("gravite yardımı",s0[0]+0,s0[1]);}
+  });
+  if(sc){ctx.fillStyle="#fff";ctx.shadowColor="#7fd6ff";ctx.shadowBlur=14;ctx.beginPath();ctx.arc(sc[0],sc[1],4.5,0,7);ctx.fill();ctx.shadowBlur=0}
+  ctx.fillStyle="#fff";ctx.font="600 14px system-ui";ctx.fillText(dstr(jd),12,22);
+  ctx.fillStyle="#8d93aa";ctx.font="12px system-ui";ctx.fillText("Konumlar efemerisle hesaplanır; mesafeler karekök ölçeklidir. Turuncu noktalar yanma anlarıdır.",12,H-12);
+}
+function drawStar(W,H){
+  const cx=W/2,cy=H/2,Rm=Math.min(W/2-70,H/2-26),sc=Rm/Math.sqrt(560),c=cur;
+  const mp=b=>b.star?[cx+sc*Math.sqrt(b.d)*Math.cos(b.ang),cy-sc*Math.sqrt(b.d)*Math.sin(b.ang)]:[cx,cy];
+  ctx.textAlign="left";ctx.font="11px system-ui";ctx.lineWidth=1;
+  [5,25,100,500].forEach(r=>{ctx.strokeStyle="#1b1b24";ctx.beginPath();ctx.arc(cx,cy,sc*Math.sqrt(r),0,7);ctx.stroke();ctx.fillStyle="#4d5166";ctx.fillText(r+" ly",cx+sc*Math.sqrt(r)*.71+3,cy-sc*Math.sqrt(r)*.71)});
+  ctx.fillStyle="#ffd36b";ctx.beginPath();ctx.arc(cx,cy,4,0,7);ctx.fill();ctx.font="12px system-ui";ctx.fillText("Güneş sistemi",cx+8,cy+14);
+  S.forEach((b,i)=>{const[x,y]=mp(b),rt=b===O||b===Dn;ctx.fillStyle=rt?"#fff":"#c9cde0";ctx.beginPath();ctx.arc(x,y,rt?4.5:2.5,0,7);ctx.fill();ctx.fillStyle=rt?"#fff":"#8d93aa";ctx.font=(rt?"600 ":"")+"12px system-ui";ctx.fillText(b.n,x+7,y+(i%2?13:-6))});
+  const[x0,y0]=mp(O),[x1,y1]=mp(Dn),fr=Math.min(1,tau/A),xs=x0+(x1-x0)*fr,ys=y0+(y1-y0)*fr;
+  ctx.strokeStyle="#2f3040";ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle="#7fd6ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(xs,ys);ctx.stroke();
+  [.03,.08,.15,.9].forEach(p=>{ctx.fillStyle="#ffb347";ctx.beginPath();ctx.arc(x0+(x1-x0)*p,y0+(y1-y0)*p,2.5,0,7);ctx.fill()});
+  ctx.fillStyle="#fff";ctx.shadowColor="#7fd6ff";ctx.shadowBlur=14;ctx.beginPath();ctx.arc(xs,ys,5,0,7);ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle="#8d93aa";ctx.font="12px system-ui";ctx.fillText(`Yıldız haritası (gökyüzü izdüşümü, mesafe karekök ölçekli). Gerçek mesafe: ${n1(c.D,2)} ışık yılı.`,12,H-12);
+}
+
+/* ================= Döngü ================= */
+function tick(ts){
+  const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
+  if(cur){
+    if(playing&&tau<A){tau=Math.min(A,tau+dt*$("speed").value);if(tau>=A){playing=false;$("play").textContent="Bitti"}}
+    const r=draw();let txt;
+    if(cur.star)txt=`Seyir: ${ft(tau/A*cur.m.T)} / ${ft(cur.m.T)}`;
+    else if(r){let real=0;ph.forEach((q,i)=>{if(i<r.p.idx)real+=q.days});real+=r.u*r.p.days;txt=`${r.p.idx+1}/${ph.length}. aşama · Görev zamanı T+${fd(real)}`;
+      document.querySelectorAll("#phases button").forEach((b,i)=>b.className=i===r.p.idx?"on":"")}
+    $("clock").textContent=txt||"";
+    const lis=document.querySelectorAll("#steps li");let a=-1;lis.forEach((li,i)=>{if(+li.dataset.t<=tau+1e-9)a=i});
+    lis.forEach((li,i)=>li.className=i<a?"done":i===a?(tau>=A?"done":"act"):"");
+  }
+  requestAnimationFrame(tick);
+}
+$("go").onclick=run;$("dt").onchange=run;
+$("swap").onclick=()=>{const a=$("from").value;$("from").value=$("to").value;$("to").value=a;run()};
+$("set").addEventListener("input",()=>refresh(false));
+$("play").onclick=()=>{if(tau>=A)tau=0;playing=!playing;$("play").textContent=playing?"Duraklat":"Devam et"};
+$("replay").onclick=()=>{tau=0;playing=true;$("play").textContent="Duraklat"};
+size();run();requestAnimationFrame(tick);
+</script>
+</body>
+</html>
