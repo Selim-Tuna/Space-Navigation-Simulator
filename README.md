@@ -4,8 +4,8 @@ Gezegenler, Ay ve yakın yıldızlar arasında en tasarruflu ve en hızlı güze
 
 Tek dosyadır (`index.html`). Kurulum, sunucu ya da derleme gerekmez.
 
-> **Canlı demo:** `https://Selim-Tuna
-.github.io/Space-Navigation-Simulator/` 
+> **Canlı demo:** `[https://Selim-Tuna
+.github.io/Space-Navigation-Simulator/](https://github.com/Selim-Tuna/Space-Navigation-Simulator.git)` 
 
 ## Özellikler
 
